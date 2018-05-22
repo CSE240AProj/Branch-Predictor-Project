@@ -12,9 +12,9 @@
 //
 // TODO:Student Information
 //
-const char *studentName = "Sha Liu";
-const char *studentID   = "A53239717";
-const char *email       = "{shl237@ucsd.edu";
+const char *studentName = "studentName";
+const char *studentID   = "studentID";
+const char *email       = "email";
 
 //------------------------------------//
 //      Predictor Configuration       //
@@ -146,7 +146,6 @@ void train_tournament(uint32_t pc, uint8_t outcome)
         if(chooserTable[globalIdx] != SN)
             chooserTable[globalIdx]--;
     }
-
     if(globalOutcome != outcome && localOutcome == outcome)
     {
         if(chooserTable[globalIdx] != ST)
@@ -176,7 +175,7 @@ void init_predictor()
             init_gshare();
             break;
         case TOURNAMENT:
-            // init_tournament();
+            init_tournament();
             break;
         case CUSTOM:
             // init_custom();
@@ -205,9 +204,7 @@ uint8_t make_prediction(uint32_t pc)
         case GSHARE:
             return pred_gshare(pc);
         case TOURNAMENT:
-            // gpred = pred_global(pc);
-            // lpred = pred_local(pc);
-            // return pred_tournament(pc);
+            return pred_tournament(pc);
             break;
         case CUSTOM:
             // return pred_bimode(pc);
@@ -237,7 +234,7 @@ void train_predictor(uint32_t pc, uint8_t outcome)
             train_gshare(pc, outcome);
             break;
         case TOURNAMENT:
-            // pred_tournament(outcome);
+            pred_tournament(outcome);
             break;
         case CUSTOM:
             // pred_bimode(outcome);
