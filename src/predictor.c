@@ -13,16 +13,16 @@
 // TODO:Student Information
 //
 const char *studentName = "Chen Chen | Sha Liu";
-const char *studentID   = "A53245506 | ";
-const char *email       = "chc507@eng.ucsd.edu | ";
+const char *studentID = "A53245506 | ";
+const char *email = "chc507@eng.ucsd.edu | ";
 
 //------------------------------------//
 //      Predictor Configuration       //
 //------------------------------------//
 
 // Handy Global for use in output routines
-const char *bpName[4] = { "Static", "Gshare",
-                          "Tournament", "Custom" };
+const char *bpName[4] = {"Static", "Gshare",
+                         "Tournament", "Custom"};
 
 int ghistoryBits; // Number of bits used for Global History
 int lhistoryBits; // Number of bits used for Local History
@@ -41,39 +41,40 @@ uint8_t *globalBHT;
 uint8_t *localBHT;
 uint8_t *localPHT;
 uint8_t *chooserTable;
-uint8_t  globalOutcome;
-uint8_t  localOutcome;
+uint8_t globalOutcome;
+uint8_t localOutcome;
 
 uint32_t ghistoryReg;
 uint32_t globalIdx;
-uint32_t localIdx;
-uint32_t patternIdx;
+uint32_t localBHTIdx;
+uint32_t localPHTIdx;
 /*my code*/
-uint8_t predWeakNotTaken = WN; 
-uint8_t predStrongTaken = ST;
-uint8_t predStrongNotTaken = SN;
+uint8_t weakNotTaken = WN;
+uint8_t strongTaken = ST;
+uint8_t strongNotTaken = SN;
+uint8_t initBias = WN;
 
-void init_gshare() 
+void init_gshare()
 {
     globalBHT = malloc((1 << ghistoryBits) * sizeof(uint8_t));
-    //memset(globalBHT, WN, (1 << ghistoryBits) * sizeof(uint8_t));  // Initiating as weakly not taken 
+    //memset(globalBHT, WN, (1 << ghistoryBits) * sizeof(uint8_t));  // Initiating as weakly not taken
     /*My code*/
-    memset(globalBHT, predWeakNotTaken, (1 << ghistoryBits) * sizeof(uint8_t));  // Initiating as weakly not taken 
+    memset(globalBHT, initBias, (1 << ghistoryBits) * sizeof(uint8_t)); // Initiating as weakly not taken
     ghistoryReg = 0;
 }
 
-uint8_t pred_gshare(uint32_t pc) 
+uint8_t pred_gshare(uint32_t pc)
 {
     uint32_t temp = pc ^ ghistoryReg;
     uint32_t mask = (1 << ghistoryBits) - 1;
-    globalIdx = temp & mask;  
+    globalIdx = temp & mask;
 
-    /*My code*/ 
-    if(globalBHT[globalIdx] <= predWeakNotTaken)
+    /*My code*/
+    if (globalBHT[globalIdx] <= weakNotTaken)
         return NOTTAKEN;
     else
         return TAKEN;
-    
+
     /*
     if(globalBHT[globalIdx] == SN || globalBHT[globalIdx] == WN)
         return NOTTAKEN;
@@ -86,7 +87,7 @@ void train_gshare(uint32_t pc, uint8_t outcome)
 {
     // uint32_t temp = pc ^ ghistoryReg;
     // uint32_t mask = (1 << ghistoryBits) - 1;
-    // uint32_t index = temp & mask;  
+    // uint32_t index = temp & mask;
     /*
     if(outcome)
     {
@@ -100,24 +101,24 @@ void train_gshare(uint32_t pc, uint8_t outcome)
     }
     */
 
-   /*My code*/
-   if(outcome)
+    /*My code*/
+    if (outcome)
     {
-        if(globalBHT[globalIdx] != predStrongTaken)
+        if (globalBHT[globalIdx] != strongTaken)
             globalBHT[globalIdx]++;
     }
     else
     {
-        if(globalBHT[globalIdx] != predStrongNotTaken)
+        if (globalBHT[globalIdx] != strongNotTaken)
             globalBHT[globalIdx]--;
     }
 
     ghistoryReg = ghistoryReg << 1;
-    ghistoryReg += outcome; 
+    ghistoryReg += outcome;
 }
 
-void init_tournament() 
-{   
+void init_tournament()
+{
     globalBHT = malloc((1 << ghistoryBits) * sizeof(uint8_t));
     localBHT = malloc((1 << lhistoryBits) * sizeof(uint8_t));
     localPHT = malloc((1 << pcIndexBits) * sizeof(uint32_t));
@@ -130,46 +131,50 @@ void init_tournament()
     memset(chooserTable, WN, (1 << ghistoryBits) * sizeof(uint8_t));
     */
 
-   /*my code*/
-    memset(globalBHT, predWeakNotTaken, (1 << ghistoryBits) * sizeof(uint8_t));
-    memset(localBHT, predWeakNotTaken, (1 << lhistoryBits) * sizeof(uint8_t));
+    /*my code*/
+    memset(globalBHT, initBias, (1 << ghistoryBits) * sizeof(uint8_t));
+    memset(localBHT, initBias, (1 << lhistoryBits) * sizeof(uint8_t));
     memset(localPHT, 0, (1 << pcIndexBits) * sizeof(uint32_t));
-    memset(chooserTable, predWeakNotTaken, (1 << ghistoryBits) * sizeof(uint8_t));
+    memset(chooserTable, initBias, (1 << ghistoryBits) * sizeof(uint8_t));
     ghistoryReg = 0;
 }
 
-uint8_t pred_local(uint32_t pc) {
+uint8_t pred_local(uint32_t pc)
+{
+
     uint32_t localPHTIndex = pc & ((1 << pcIndexBits) - 1);
     uint32_t localBHTIndex = localPHT[localPHTIndex];
     uint8_t localPrediction = localBHT[localBHTIndex];
     //localOutcome = ((localPrediction == WN || localPrediction == SN) ? NOTTAKEN : TAKEN);
     /*My code*/
-    localOutcome = ((localPrediction <= predWeakNotTaken) ? NOTTAKEN : TAKEN);    
+    localOutcome = ((localPrediction <= weakNotTaken) ? NOTTAKEN : TAKEN);
     return localOutcome;
 }
 
-uint8_t pred_global(uint32_t pc) {
+uint8_t pred_global(uint32_t pc)
+{
     uint32_t gBHTIndex = (ghistoryReg) & ((1 << ghistoryBits) - 1);
     uint8_t gPrediction = globalBHT[gBHTIndex];
     /*my code*/
-    globalOutcome = ((gPrediction <= predWeakNotTaken) ? NOTTAKEN : TAKEN);
-   // globalOutcome = ((gPrediction == WN || gPrediction == SN) ? NOTTAKEN : TAKEN);
+    globalOutcome = ((gPrediction <= weakNotTaken) ? NOTTAKEN : TAKEN);
+    //globalOutcome = ((gPrediction == WN || gPrediction == SN) ? NOTTAKEN : TAKEN);
     return globalOutcome;
 }
 
-uint8_t pred_tournament(uint32_t pc) 
-{   
+uint8_t pred_tournament(uint32_t pc)
+{
     uint32_t mask = (1 << ghistoryBits) - 1;
-    globalIdx = ghistoryReg & mask; 
+    globalIdx = ghistoryReg & mask;
     pred_global(pc);
-    pred_local(pc); 
+    pred_local(pc);
 
     /*My code*/
-    if(chooserTable[globalIdx] <= predWeakNotTaken) 
+
+    if (chooserTable[globalIdx] <= weakNotTaken)
         return globalOutcome;
     else
         return localOutcome;
-    
+
     /*
     if(chooserTable[globalIdx] == SN || chooserTable[globalIdx] == WN)
         return globalOutcome;
@@ -178,26 +183,24 @@ uint8_t pred_tournament(uint32_t pc)
     */
 }
 
-
 void init_custom()
 {
-    predWeakNotTaken  = NT_3;
-    predStrongNotTaken = NT_0;
-    predStrongTaken = T_3;
-    ghistoryBits = 12;
-    lhistoryBits = 11;
-    pcIndexBits = 10;
+    weakNotTaken = NT_3;
+    strongNotTaken = NT_0;
+    strongTaken = T_3;
+    ghistoryBits = 15;
+    lhistoryBits = 16;
+    pcIndexBits = 16;
     init_tournament();
 }
 
-uint8_t pred_custom(uint32_t pc)  
+uint8_t pred_custom(uint32_t pc)
 {
     return pred_tournament(pc);
 }
 
-
 void train_tournament(uint32_t pc, uint8_t outcome)
-{   
+{
     /*
     if(outcome)
     {
@@ -210,20 +213,20 @@ void train_tournament(uint32_t pc, uint8_t outcome)
             globalBHT[globalIdx]--;
     }
 
-    patternIdx = pc & ((1 << pcIndexBits) - 1);
-    localPHT[patternIdx] = localPHT[patternIdx] << 1;
-    localPHT[patternIdx] += outcome;
+    localPHTIdx = pc & ((1 << pcIndexBits) - 1);
+    localPHT[localPHTIdx] = localPHT[localPHTIdx] << 1;
+    localPHT[localPHTIdx] += outcome;
 
-    localIdx = localPHT[patternIdx] & ((1 << lhistoryBits) - 1);
+    localBHTIdx = localPHT[localPHTIdx] & ((1 << lhistoryBits) - 1);
     if(outcome)
     {
-        if(localBHT[localIdx] != ST)
-            localBHT[localIdx]++;
+        if(localBHT[localBHTIdx] != ST)
+            localBHT[localBHTIdx]++;
     }
     else
     {
-        if(localBHT[localIdx] != SN)
-            localBHT[localIdx]--;   
+        if(localBHT[localBHTIdx] != SN)
+            localBHT[localBHTIdx]--;   
     }
 
     // Updating the chooser table  
@@ -240,54 +243,62 @@ void train_tournament(uint32_t pc, uint8_t outcome)
     */
 
     /*My code*/
-    if(outcome)
+
+    //Update global BHT
+    if (outcome)
     {
-        if(globalBHT[globalIdx] != predStrongTaken)
+        if (globalBHT[globalIdx] != strongTaken)
             globalBHT[globalIdx]++;
     }
     else
     {
-        if(globalBHT[globalIdx] != predStrongNotTaken)
+        if (globalBHT[globalIdx] != strongNotTaken)
             globalBHT[globalIdx]--;
     }
 
-    patternIdx = pc & ((1 << pcIndexBits) - 1);
-    localPHT[patternIdx] = localPHT[patternIdx] << 1;
-    localPHT[patternIdx] += outcome;
+    //Update global history
+    ghistoryReg = ghistoryReg << 1;
+    ghistoryReg &= ((1 << ghistoryBits) - 1);
+    ghistoryReg += outcome;
 
-    localIdx = localPHT[patternIdx] & ((1 << lhistoryBits) - 1);
-    if(outcome)
+    //
+    uint32_t pcMask = ((1 << pcIndexBits) - 1);
+    uint32_t localPHTIdx = pc & pcMask;
+    uint32_t localBHTIdx = localPHT[localPHTIdx];
+
+    //localBHTIdx = localPHT[localPHTIdx] & ((1 << lhistoryBits) - 1);
+    if (outcome)
     {
-        if(localBHT[localIdx] != predStrongTaken)
-            localBHT[localIdx]++;
+        if (localBHT[localBHTIdx] != strongTaken)
+            localBHT[localBHTIdx]++;
     }
     else
     {
-        if(localBHT[localIdx] != predStrongNotTaken)
-            localBHT[localIdx]--;   
+        if (localBHT[localBHTIdx] != strongNotTaken)
+            localBHT[localBHTIdx]--;
     }
 
-    // Updating the chooser table  
-    if(globalOutcome == outcome && localOutcome != outcome)
+    localPHTIdx = pc & ((1 << pcIndexBits) - 1);
+    localPHT[localPHTIdx] = localPHT[localPHTIdx] << 1;
+    localPHT[localPHTIdx] += outcome;
+
+    // Updating the chooser table
+    if (globalOutcome == outcome && localOutcome != outcome)
     {
-        if(chooserTable[globalIdx] != predStrongNotTaken)
+        if (chooserTable[globalIdx] != strongNotTaken)
             chooserTable[globalIdx]--;
     }
-    if(globalOutcome != outcome && localOutcome == outcome)
+    if (globalOutcome != outcome && localOutcome == outcome)
     {
-        if(chooserTable[globalIdx] != predStrongTaken)
+        if (chooserTable[globalIdx] != strongTaken)
             chooserTable[globalIdx]++;
     }
-
-    ghistoryReg = ghistoryReg << 1;
-    ghistoryReg += outcome; 
 }
 
-void train_custom(uint32_t pc, uint8_t outcome) 
+void train_custom(uint32_t pc, uint8_t outcome)
 {
     train_tournament(pc, outcome);
 }
-
 
 //------------------------------------//
 //        Predictor Functions         //
@@ -296,24 +307,25 @@ void train_custom(uint32_t pc, uint8_t outcome)
 // Initialize the predictor
 //
 void init_predictor()
-{   
+{
     //
     //TODO: Initialize Branch Predictor Data Structures
     //
-    switch (bpType) {
-        case STATIC:
-            break;
-        case GSHARE:
-            init_gshare();
-            break;
-        case TOURNAMENT:
-            init_tournament();
-            break;
-        case CUSTOM:
-            init_custom();
-            break;
-        default:
-            break;
+    switch (bpType)
+    {
+    case STATIC:
+        break;
+    case GSHARE:
+        init_gshare();
+        break;
+    case TOURNAMENT:
+        init_tournament();
+        break;
+    case CUSTOM:
+        init_custom();
+        break;
+    default:
+        break;
     }
 }
 
@@ -330,19 +342,19 @@ uint8_t make_prediction(uint32_t pc)
     // Make a prediction based on the bpType
     switch (bpType)
     {
-        case STATIC:
-            return TAKEN;
-        case GSHARE:
-            return pred_gshare(pc);
-        case TOURNAMENT:
-            return pred_tournament(pc);
-            break;
-        case CUSTOM:
-            //return pred_bimode(pc);
-            return pred_custom(pc);
-            break;
-        default:
-            break;
+    case STATIC:
+        return TAKEN;
+    case GSHARE:
+        return pred_gshare(pc);
+    case TOURNAMENT:
+        return pred_tournament(pc);
+        break;
+    case CUSTOM:
+        //return pred_bimode(pc);
+        return pred_custom(pc);
+        break;
+    default:
+        break;
     }
 
     // If there is not a compatable bpType then return NOTTAKEN
@@ -360,20 +372,18 @@ void train_predictor(uint32_t pc, uint8_t outcome)
     //
     switch (bpType)
     {
-        case STATIC:
-            break;
-        case GSHARE:
-            train_gshare(pc, outcome);
-            break;
-        case TOURNAMENT:
-            train_tournament(pc, outcome);
-            break;
-        case CUSTOM:
-            train_custom(pc, outcome);
-            break;
-        default:
-            break;
+    case STATIC:
+        break;
+    case GSHARE:
+        train_gshare(pc, outcome);
+        break;
+    case TOURNAMENT:
+        train_tournament(pc, outcome);
+        break;
+    case CUSTOM:
+        train_custom(pc, outcome);
+        break;
+    default:
+        break;
     }
 }
-
-
