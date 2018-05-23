@@ -12,9 +12,9 @@
 //
 // TODO:Student Information
 //
-const char *studentName = "studentName";
-const char *studentID   = "studentID";
-const char *email       = "email";
+const char *studentName = "Chen Chen | Sha Liu";
+const char *studentID   = "A53245506 | ";
+const char *email       = "chc507@eng.ucsd.edu | ";
 
 //------------------------------------//
 //      Predictor Configuration       //
@@ -43,6 +43,7 @@ uint8_t *localPHT;
 uint8_t *chooserTable;
 uint8_t  globalOutcome;
 uint8_t  localOutcome;
+
 uint32_t ghistoryReg;
 uint32_t globalIdx;
 uint32_t localIdx;
@@ -92,7 +93,7 @@ void init_tournament()
     localBHT = malloc((1 << lhistoryBits) * sizeof(uint8_t));
     localPHT = malloc((1 << pcIndexBits) * sizeof(uint32_t));
     chooserTable = malloc((1 << ghistoryBits) * sizeof(uint8_t));
-    
+
     memset(globalBHT, WN, (1 << ghistoryBits) * sizeof(uint8_t));
     memset(localBHT, WN, (1 << lhistoryBits) * sizeof(uint8_t));
     memset(localPHT, 0, (1 << pcIndexBits) * sizeof(uint32_t));
@@ -101,15 +102,48 @@ void init_tournament()
     ghistoryReg = 0;
 }
 
+uint8_t pred_local(uint32_t pc) {
+    uint32_t localPHTIndex = pc & ((1 << pcIndexBits) - 1);
+    uint32_t localBHTIndex = localPHT[localPHTIndex];
+    uint8_t localPrediction = localBHT[localBHTIndex];
+    localOutcome = ((localPrediction == WN || localPrediction == SN) ? NOTTAKEN : TAKEN);
+    return localOutcome;
+}
+
+uint8_t pred_global(uint32_t pc) {
+    uint32_t gBHTIndex = (ghistoryReg) & ((1 << ghistoryBits) - 1);
+    uint8_t gPrediction = globalBHT[gBHTIndex];
+    globalOutcome = ((gPrediction == WN || gPrediction == SN) ? NOTTAKEN : TAKEN);
+    return globalOutcome;
+}
+
 uint8_t pred_tournament(uint32_t pc) 
-{
+{   
     uint32_t mask = (1 << ghistoryBits) - 1;
-    globalIdx = ghistoryReg & mask;  
+    globalIdx = ghistoryReg & mask; 
+    pred_global(pc);
+    pred_local(pc); 
     if(chooserTable[globalIdx] == SN || chooserTable[globalIdx] == WN)
         return globalOutcome;
     else
         return localOutcome;
 }
+
+
+void init_custom()
+{
+    printf("In custom:: init\n");
+    ghistoryBits = 15;
+    lhistoryBits = 15;
+    pcIndexBits = 15;
+    init_tournament();
+}
+
+uint8_t pred_custom(uint32_t pc)  
+{
+    return pred_tournament(pc);
+}
+
 
 void train_tournament(uint32_t pc, uint8_t outcome)
 {
@@ -156,6 +190,11 @@ void train_tournament(uint32_t pc, uint8_t outcome)
     ghistoryReg += outcome; 
 }
 
+void train_custom(uint32_t pc, uint8_t outcome) 
+{
+    train_tournament(pc, outcome);
+}
+
 
 //------------------------------------//
 //        Predictor Functions         //
@@ -164,7 +203,7 @@ void train_tournament(uint32_t pc, uint8_t outcome)
 // Initialize the predictor
 //
 void init_predictor()
-{
+{   
     //
     //TODO: Initialize Branch Predictor Data Structures
     //
@@ -178,12 +217,11 @@ void init_predictor()
             init_tournament();
             break;
         case CUSTOM:
-            // init_custom();
+            init_custom();
             break;
         default:
             break;
     }
-
 }
 
 // Make a prediction for conditional branch instruction at PC 'pc'
@@ -207,7 +245,8 @@ uint8_t make_prediction(uint32_t pc)
             return pred_tournament(pc);
             break;
         case CUSTOM:
-            // return pred_bimode(pc);
+            //return pred_bimode(pc);
+            return pred_custom(pc);
             break;
         default:
             break;
@@ -234,10 +273,10 @@ void train_predictor(uint32_t pc, uint8_t outcome)
             train_gshare(pc, outcome);
             break;
         case TOURNAMENT:
-            pred_tournament(outcome);
+            train_tournament(pc, outcome);
             break;
         case CUSTOM:
-            // pred_bimode(outcome);
+            train_custom(pc, outcome);
             break;
         default:
             break;
