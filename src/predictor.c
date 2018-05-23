@@ -48,12 +48,17 @@ uint32_t ghistoryReg;
 uint32_t globalIdx;
 uint32_t localIdx;
 uint32_t patternIdx;
-
+/*my code*/
+uint8_t predWeakNotTaken = WN; 
+uint8_t predStrongTaken = ST;
+uint8_t predStrongNotTaken = SN;
 
 void init_gshare() 
 {
     globalBHT = malloc((1 << ghistoryBits) * sizeof(uint8_t));
-    memset(globalBHT, WN, (1 << ghistoryBits) * sizeof(uint8_t));  // Initiating as weakly not taken 
+    //memset(globalBHT, WN, (1 << ghistoryBits) * sizeof(uint8_t));  // Initiating as weakly not taken 
+    /*My code*/
+    memset(globalBHT, predWeakNotTaken, (1 << ghistoryBits) * sizeof(uint8_t));  // Initiating as weakly not taken 
     ghistoryReg = 0;
 }
 
@@ -62,10 +67,19 @@ uint8_t pred_gshare(uint32_t pc)
     uint32_t temp = pc ^ ghistoryReg;
     uint32_t mask = (1 << ghistoryBits) - 1;
     globalIdx = temp & mask;  
+
+    /*My code*/ 
+    if(globalBHT[globalIdx] <= predWeakNotTaken)
+        return NOTTAKEN;
+    else
+        return TAKEN;
+    
+    /*
     if(globalBHT[globalIdx] == SN || globalBHT[globalIdx] == WN)
         return NOTTAKEN;
     else
         return TAKEN;
+    */
 }
 
 void train_gshare(uint32_t pc, uint8_t outcome)
@@ -73,6 +87,7 @@ void train_gshare(uint32_t pc, uint8_t outcome)
     // uint32_t temp = pc ^ ghistoryReg;
     // uint32_t mask = (1 << ghistoryBits) - 1;
     // uint32_t index = temp & mask;  
+    /*
     if(outcome)
     {
         if(globalBHT[globalIdx] != ST)
@@ -83,22 +98,43 @@ void train_gshare(uint32_t pc, uint8_t outcome)
         if(globalBHT[globalIdx] != SN)
             globalBHT[globalIdx]--;
     }
+    */
+
+   /*My code*/
+   if(outcome)
+    {
+        if(globalBHT[globalIdx] != predStrongTaken)
+            globalBHT[globalIdx]++;
+    }
+    else
+    {
+        if(globalBHT[globalIdx] != predStrongNotTaken)
+            globalBHT[globalIdx]--;
+    }
+
     ghistoryReg = ghistoryReg << 1;
     ghistoryReg += outcome; 
 }
 
 void init_tournament() 
-{
+{   
     globalBHT = malloc((1 << ghistoryBits) * sizeof(uint8_t));
     localBHT = malloc((1 << lhistoryBits) * sizeof(uint8_t));
     localPHT = malloc((1 << pcIndexBits) * sizeof(uint32_t));
     chooserTable = malloc((1 << ghistoryBits) * sizeof(uint8_t));
 
+    /*
     memset(globalBHT, WN, (1 << ghistoryBits) * sizeof(uint8_t));
     memset(localBHT, WN, (1 << lhistoryBits) * sizeof(uint8_t));
     memset(localPHT, 0, (1 << pcIndexBits) * sizeof(uint32_t));
     memset(chooserTable, WN, (1 << ghistoryBits) * sizeof(uint8_t));
+    */
 
+   /*my code*/
+    memset(globalBHT, predWeakNotTaken, (1 << ghistoryBits) * sizeof(uint8_t));
+    memset(localBHT, predWeakNotTaken, (1 << lhistoryBits) * sizeof(uint8_t));
+    memset(localPHT, 0, (1 << pcIndexBits) * sizeof(uint32_t));
+    memset(chooserTable, predWeakNotTaken, (1 << ghistoryBits) * sizeof(uint8_t));
     ghistoryReg = 0;
 }
 
@@ -106,14 +142,18 @@ uint8_t pred_local(uint32_t pc) {
     uint32_t localPHTIndex = pc & ((1 << pcIndexBits) - 1);
     uint32_t localBHTIndex = localPHT[localPHTIndex];
     uint8_t localPrediction = localBHT[localBHTIndex];
-    localOutcome = ((localPrediction == WN || localPrediction == SN) ? NOTTAKEN : TAKEN);
+    //localOutcome = ((localPrediction == WN || localPrediction == SN) ? NOTTAKEN : TAKEN);
+    /*My code*/
+    localOutcome = ((localPrediction <= predWeakNotTaken) ? NOTTAKEN : TAKEN);    
     return localOutcome;
 }
 
 uint8_t pred_global(uint32_t pc) {
     uint32_t gBHTIndex = (ghistoryReg) & ((1 << ghistoryBits) - 1);
     uint8_t gPrediction = globalBHT[gBHTIndex];
-    globalOutcome = ((gPrediction == WN || gPrediction == SN) ? NOTTAKEN : TAKEN);
+    /*my code*/
+    globalOutcome = ((gPrediction <= predWeakNotTaken) ? NOTTAKEN : TAKEN);
+   // globalOutcome = ((gPrediction == WN || gPrediction == SN) ? NOTTAKEN : TAKEN);
     return globalOutcome;
 }
 
@@ -123,19 +163,30 @@ uint8_t pred_tournament(uint32_t pc)
     globalIdx = ghistoryReg & mask; 
     pred_global(pc);
     pred_local(pc); 
+
+    /*My code*/
+    if(chooserTable[globalIdx] <= predWeakNotTaken) 
+        return globalOutcome;
+    else
+        return localOutcome;
+    
+    /*
     if(chooserTable[globalIdx] == SN || chooserTable[globalIdx] == WN)
         return globalOutcome;
     else
         return localOutcome;
+    */
 }
 
 
 void init_custom()
 {
-    printf("In custom:: init\n");
-    ghistoryBits = 15;
-    lhistoryBits = 15;
-    pcIndexBits = 15;
+    predWeakNotTaken  = NT_3;
+    predStrongNotTaken = NT_0;
+    predStrongTaken = T_3;
+    ghistoryBits = 12;
+    lhistoryBits = 11;
+    pcIndexBits = 10;
     init_tournament();
 }
 
@@ -146,7 +197,8 @@ uint8_t pred_custom(uint32_t pc)
 
 
 void train_tournament(uint32_t pc, uint8_t outcome)
-{
+{   
+    /*
     if(outcome)
     {
         if(globalBHT[globalIdx] != ST)
@@ -183,6 +235,47 @@ void train_tournament(uint32_t pc, uint8_t outcome)
     if(globalOutcome != outcome && localOutcome == outcome)
     {
         if(chooserTable[globalIdx] != ST)
+            chooserTable[globalIdx]++;
+    }
+    */
+
+    /*My code*/
+    if(outcome)
+    {
+        if(globalBHT[globalIdx] != predStrongTaken)
+            globalBHT[globalIdx]++;
+    }
+    else
+    {
+        if(globalBHT[globalIdx] != predStrongNotTaken)
+            globalBHT[globalIdx]--;
+    }
+
+    patternIdx = pc & ((1 << pcIndexBits) - 1);
+    localPHT[patternIdx] = localPHT[patternIdx] << 1;
+    localPHT[patternIdx] += outcome;
+
+    localIdx = localPHT[patternIdx] & ((1 << lhistoryBits) - 1);
+    if(outcome)
+    {
+        if(localBHT[localIdx] != predStrongTaken)
+            localBHT[localIdx]++;
+    }
+    else
+    {
+        if(localBHT[localIdx] != predStrongNotTaken)
+            localBHT[localIdx]--;   
+    }
+
+    // Updating the chooser table  
+    if(globalOutcome == outcome && localOutcome != outcome)
+    {
+        if(chooserTable[globalIdx] != predStrongNotTaken)
+            chooserTable[globalIdx]--;
+    }
+    if(globalOutcome != outcome && localOutcome == outcome)
+    {
+        if(chooserTable[globalIdx] != predStrongTaken)
             chooserTable[globalIdx]++;
     }
 
