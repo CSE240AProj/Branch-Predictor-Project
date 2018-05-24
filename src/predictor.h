@@ -44,10 +44,20 @@ extern const char *bpName[];
 #define NT_1  1			// predict NT, strong not taken
 #define NT_2  2			// predict NT, mildy not taken
 #define NT_3  3			// predict NT, weakly not taken
+#define NT_4  4         // predict NT, very weakly not taken 
+#define T_0  5			// predict T, very weakly taken
+#define T_1  6			// predict T, weakly taken
+#define T_2  7			// predict T, mildly taken
+#define T_3  8			// predict T, strong taken
+#define T_4  9			// predict T, very strong taken
+
+/*
 #define T_0  4			// predict T, weakly taken
 #define T_1  5			// predict T, mildly taken
 #define T_2  6			// predict T, strong taken
 #define T_3  7			// predict T, very strong taken
+*/
+
 //------------------------------------//
 //      Predictor Configuration       //
 //------------------------------------//
